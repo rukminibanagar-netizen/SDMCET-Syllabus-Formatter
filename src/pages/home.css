@@ -1,0 +1,281 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+/* Home page styles (campus hero + programme dials), taken from the teammate's design.
+   Colours the hero needs are defined here so they work without the teammate's global CSS. */
+
+/* ==========================================================================
+   HOME PAGE (HERO WITH SDMCET CAMPUS & CIRCULAR DIALS)
+   ========================================================================== */
+.home-page-root {
+  --amber: #F28C1F;
+  --blue: #1D4ED8;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  /* 65px = the sticky Navbar (4rem) plus its 1px border */
+  min-height: calc(100vh - 65px);
+}
+
+.home-hero-section {
+  position: relative;
+  min-height: calc(100vh - 65px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 56px 6vw 48px;
+  overflow: hidden;
+}
+
+.hero-background-image {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.72) saturate(1.15);
+  transform: scale(1.02);
+  transition: transform 12s ease;
+}
+
+.hero-gradient-overlay {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(10, 37, 64, 0.4) 0%, rgba(6, 24, 43, 0.78) 100%);
+}
+
+.hero-ambient-mist {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% 40%, rgba(242, 140, 31, 0.18) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.hero-content-container {
+  position: relative;
+  z-index: 10;
+  max-width: 1360px;
+  width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 40px;
+}
+
+.hero-text-block {
+  max-width: 720px;
+  color: #fff;
+}
+
+.hero-institution-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  padding: 6px 16px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+.inst-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber);
+}
+
+.hero-title {
+  font-size: clamp(38px, 5vw, 64px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+}
+
+.highlight-text {
+  background: linear-gradient(90deg, #FFB067, #F28C1F);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-tagline {
+  font-size: clamp(15px, 1.8vw, 18px);
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 640px;
+  line-height: 1.6;
+  margin-bottom: 34px;
+}
+
+.hero-stats-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hero-stat-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 14px 22px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+}
+
+/* CIRCULAR DIALS ON RIGHT (Transforming reference scene dials) */
+.hero-interactive-dials {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  position: relative;
+}
+
+.programme-circle-dial {
+  position: relative;
+  width: 148px;
+  height: 148px;
+  border-radius: 50%;
+  background: rgba(18, 25, 38, 0.8);
+  backdrop-filter: blur(16px);
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.dial-ug {
+  border-color: rgba(242, 140, 31, 0.45);
+}
+
+.dial-pg {
+  border-color: rgba(59, 130, 246, 0.45);
+  transform: translateX(-24px);
+}
+
+.circle-pulse-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.3);
+  animation: rotateDial 25s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes rotateDial {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.circle-inner-content {
+  text-align: center;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px;
+}
+
+.circle-badge {
+  font-size: 11px;
+  font-weight: 800;
+  background: var(--amber);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-bottom: 4px;
+}
+
+.dial-pg .circle-badge {
+  background: var(--blue);
+}
+
+.circle-name {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.circle-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 2px;
+}
+
+.circle-arrow {
+  margin-top: 4px;
+  font-size: 14px;
+  transition: transform 0.25s;
+}
+
+.programme-circle-dial:hover {
+  transform: scale(1.08) translateY(-4px);
+  background: rgba(18, 25, 38, 0.95);
+  box-shadow: 0 20px 45px rgba(242, 140, 31, 0.3);
+}
+
+.dial-pg:hover {
+  transform: translateX(-24px) scale(1.08) translateY(-4px);
+  box-shadow: 0 20px 45px rgba(59, 130, 246, 0.3);
+}
+
+.programme-circle-dial:hover .circle-arrow {
+  transform: translateX(4px);
+}
+
+/* Keyboard focus on the programme dials */
+.programme-circle-dial:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 8px;
+}
+
+/* Tablet and mobile */
+@media (max-width: 1024px) {
+  .hero-content-container {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-interactive-dials {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .dial-pg {
+    transform: none;
+  }
+
+  .dial-pg:hover {
+    transform: scale(1.08) translateY(-4px);
+  }
+}
+
+/* Respect reduced-motion settings */
+@media (prefers-reduced-motion: reduce) {
+  .circle-pulse-ring {
+    animation: none;
+  }
+
+  .hero-background-image,
+  .programme-circle-dial,
+  .circle-arrow {
+    transition: none;
+  }
+}
