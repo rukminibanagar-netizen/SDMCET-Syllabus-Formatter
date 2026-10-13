@@ -1,12 +1,20 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { PublicOnly, RequireAuth } from './components/RouteGuards';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Terms from './pages/Terms';
 import Home from './pages/Home';
+import UGCourses from './pages/UGCourses';
+import PGCourses from './pages/PGCourses';
+import SyllabusStudio from './pages/SyllabusStudio';
 import AdminApprovals from './pages/AdminApprovals';
+import About from './pages/About';
+import Help from './pages/Help';
 
 function Shell() {
   const { pathname } = useLocation();
@@ -15,11 +23,11 @@ function Shell() {
 
   return (
     <div
-      className="min-h-screen flex flex-col bg-cover bg-center bg-fixed relative text-slate-800"
+      className="app-shell min-h-screen flex flex-col bg-cover bg-center bg-fixed relative text-slate-800"
       style={{ backgroundImage: `url('/sdmcet-campus.jpg')` }}
     >
       {/* Dark tint overlay */}
-      <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-[2px] pointer-events-none" />
+      <div className="no-print absolute inset-0 bg-slate-950/75 backdrop-blur-[2px] pointer-events-none" />
 
       {/* Foreground content */}
       <div className="relative z-10 flex flex-col flex-grow">
@@ -32,12 +40,38 @@ function Shell() {
           }
         >
           <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/admin" element={<AdminApprovals />} />
+            {/* Signed-out pages */}
+            <Route path="/" element={<PublicOnly><Login /></PublicOnly>} />
+            <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
+            <Route path="/signup" element={<PublicOnly><Signup /></PublicOnly>} />
+
+            {/* Faculty, first sign-in only */}
+            <Route
+              path="/terms"
+              element={<RequireAuth role="faculty" termsPending><Terms /></RequireAuth>}
+            />
+
+            {/* Signed-in pages (faculty must have accepted the terms) */}
+            <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
+            {/* UG and PG: departments, then semesters, then schemes (each is its own page) */}
+            <Route path="/ug" element={<RequireAuth><UGCourses /></RequireAuth>} />
+            <Route path="/ug/:deptId" element={<RequireAuth><UGCourses /></RequireAuth>} />
+            <Route path="/ug/:deptId/semester/:sem" element={<RequireAuth><UGCourses /></RequireAuth>} />
+            <Route path="/pg" element={<RequireAuth><PGCourses /></RequireAuth>} />
+            <Route path="/pg/:deptId" element={<RequireAuth><PGCourses /></RequireAuth>} />
+            <Route path="/pg/:deptId/semester/:sem" element={<RequireAuth><PGCourses /></RequireAuth>} />
+            <Route
+              path="/syllabus/:category/:deptId/:sem/:schemeId"
+              element={<RequireAuth><SyllabusStudio /></RequireAuth>}
+            />
+
+            {/* About and Help (the navbar links) */}
+            <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
+            <Route path="/help" element={<RequireAuth><Help /></RequireAuth>} />
+
+            {/* Admin only */}
+            <Route path="/admin" element={<RequireAuth role="admin"><AdminApprovals /></RequireAuth>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -49,8 +83,11 @@ function Shell() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Shell />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <ScrollToTop />
+        <Shell />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

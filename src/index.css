@@ -10,3 +10,77 @@ body {
   -webkit-font-smoothing: antialiased;
   background-color: #0f172a;
 }
+
+/* Formal Times New Roman academic font for the syllabus document */
+.sdmcet-doc-font {
+  font-family: 'Times New Roman', Times, serif;
+}
+
+/* Click-to-edit text inside the official preview (screen only) */
+.editable-field {
+  outline: none;
+  border-radius: 2px;
+  cursor: text;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+.editable-field:hover {
+  background-color: rgba(14, 165, 233, 0.12);
+}
+.editable-field:focus {
+  background-color: rgba(251, 146, 60, 0.18);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.55);
+}
+.editable-field:empty::before {
+  content: attr(data-placeholder);
+  color: #94a3b8;
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Print / Export PDF: only the syllabus page is printed */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: white !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .app-shell {
+    background: none !important;
+    min-height: 0 !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  .syllabus-print-container {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .syllabus-print-container table,
+  .syllabus-print-container tr {
+    break-inside: avoid;
+  }
+  .syllabus-print-container * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .editable-field,
+  .editable-field:hover,
+  .editable-field:focus {
+    background: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
+  .editable-field:empty::before {
+    content: '' !important;
+  }
+}

@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
 import { API_URL } from '../api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const [role, setRole] = useState('faculty');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,10 +32,7 @@ export default function Login() {
         setError(data.message || 'Login failed.');
         return;
       }
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      const u = data.user;
-navigate(u.role === 'admin' ? '/admin' : u.termsAccepted ? '/home' : '/terms');
+    signIn(data.token, data.user);
     } catch {
       setError('Cannot reach the server. Make sure the backend is running.');
     } finally {

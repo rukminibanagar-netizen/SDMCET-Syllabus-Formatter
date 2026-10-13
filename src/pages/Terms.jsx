@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, FileText } from 'lucide-react';
 import { API_URL } from '../api';
+import { useAuth } from '../context/AuthContext';
 const TERMS = [
   {
     title: 'Authorised Use',
@@ -43,6 +44,7 @@ const TERMS = [
 
 export default function Terms() {
   const navigate = useNavigate();
+  const { markTermsAccepted } = useAuth();
   const [agreed, setAgreed] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -54,8 +56,7 @@ const handleContinue = async () => {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     });
     if (!res.ok) throw new Error();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    localStorage.setItem('user', JSON.stringify({ ...user, termsAccepted: true }));
+    markTermsAccepted();
     navigate('/home');
   } catch {
     alert('Could not save your acceptance. Please try again.');

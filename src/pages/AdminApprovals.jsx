@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Check, X, LogOut, ShieldCheck } from 'lucide-react';
 import { API_URL } from '../api';
-
+import { useAuth } from '../context/AuthContext';
 export default function AdminApprovals() {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
@@ -11,12 +11,11 @@ export default function AdminApprovals() {
 
   const token = localStorage.getItem('token');
   const me = JSON.parse(localStorage.getItem('user') || 'null');
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
+  const { signOut } = useAuth();
+    const logout = () => {
+  signOut();
+  navigate('/login');
+};
 
   const authHeaders = { Authorization: `Bearer ${token}` };
 
