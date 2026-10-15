@@ -62,19 +62,17 @@ export default function AdminApprovals() {
   };
 
   return (
-    <div className="relative min-h-screen w-full p-4 sm:p-8">
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('/sdmcet-campus.jpg')` }}
-      >
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-[2px]" />
-      </div>
+    <div className="w-full flex-grow p-4 sm:p-8">
 
       <div className="relative z-10 max-w-3xl mx-auto text-white">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
-              <ShieldCheck className="w-6 h-6 text-white" />
+            <div className="w-12 h-14 p-1 bg-white rounded-xl shadow-md border border-white/30 flex items-center justify-center flex-shrink-0">
+              <img 
+                src="/sdmcet-logo.png" 
+                alt="SDMCET Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold">Account Approvals</h1>

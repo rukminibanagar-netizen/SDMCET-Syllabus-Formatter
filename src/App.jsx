@@ -20,6 +20,7 @@ function Shell() {
   const { pathname } = useLocation();
   // The home page is a full-width hero, so it skips the centred content box and the footer
   const isHome = pathname === '/home';
+  const isFullWidth = ['/', '/login', '/signup', '/terms', '/home', '/admin'].includes(pathname);
 
   return (
     <div
@@ -34,8 +35,8 @@ function Shell() {
         <Navbar />
         <main
           className={
-            isHome
-              ? 'flex-grow w-full'
+            isFullWidth
+              ? 'flex-grow w-full flex flex-col'
               : 'flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full'
           }
         >
@@ -66,8 +67,8 @@ function Shell() {
             />
 
             {/* About and Help (the navbar links) */}
-            <Route path="/about" element={<RequireAuth><About /></RequireAuth>} />
-            <Route path="/help" element={<RequireAuth><Help /></RequireAuth>} />
+            <Route path="/about" element={<About />} />
+            <Route path="/help" element={<Help />} />
 
             {/* Admin only */}
             <Route path="/admin" element={<RequireAuth role="admin"><AdminApprovals /></RequireAuth>} />

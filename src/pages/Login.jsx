@@ -41,23 +41,20 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 select-none">
+    <div className="w-full flex-grow flex items-center justify-center p-4 sm:p-6 select-none my-auto">
       
-      {/* 1. Full-Screen SDMCET Campus Background with Dark Overlay */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url('/sdmcet-campus.jpg')` }}
-      >
-        <div className="absolute inset-0 bg-slate-950/75 backdrop-blur-[2px]" />
-      </div>
 
       {/* 2. Middle-Aligned Glassmorphic Login Card */}
       <div className="relative z-10 w-full max-w-md bg-slate-900/85 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl text-white">
         
         {/* Header Branding */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <ShieldCheck className="w-8 h-8 text-white" />
+          <div className="w-20 h-24 mx-auto mb-3 p-1.5 bg-white rounded-2xl shadow-xl shadow-black/40 border border-white/30 flex items-center justify-center transition-transform hover:scale-105">
+            <img 
+              src="/sdmcet-logo.png" 
+              alt="SDMCET College Logo" 
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">
             SDMCET Syllabus Formatter Portal
