@@ -40,10 +40,35 @@ if (!process.env.MONGO_URI || !process.env.JWT_SECRET) {
 }
 
 const PORT = process.env.PORT || 5000;
+const bcrypt = require('bcryptjs');
+const User = require('./models/User');
+
+async function ensureDefaultAdmin() {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || 'rukminibanagar@gmail.com').toLowerCase();
+    const adminPass = process.env.ADMIN_EMAIL_PASS || 'sdmcetAdmin2014';
+    const exists = await User.findOne({ email: adminEmail });
+    if (!exists) {
+      const hash = await bcrypt.hash(adminPass, 10);
+      await User.create({
+        name: 'SDMCET Administrator',
+        email: adminEmail,
+        password: hash,
+        role: 'admin',
+        status: 'approved',
+      });
+      console.log('Admin user initialized:', adminEmail);
+    }
+  } catch (e) {
+    console.error('Error checking admin user:', e.message);
+  }
+}
+
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB connected');
+    await ensureDefaultAdmin();
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => {
