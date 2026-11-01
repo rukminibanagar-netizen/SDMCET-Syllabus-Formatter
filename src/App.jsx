@@ -11,6 +11,7 @@ import Terms from './pages/Terms';
 import Home from './pages/Home';
 import UGCourses from './pages/UGCourses';
 import PGCourses from './pages/PGCourses';
+import CourseList from './pages/CourseList';
 import SyllabusStudio from './pages/SyllabusStudio';
 import AdminApprovals from './pages/AdminApprovals';
 import About from './pages/About';
@@ -60,8 +61,13 @@ function Shell() {
             <Route path="/pg" element={<RequireAuth><PGCourses /></RequireAuth>} />
             <Route path="/pg/:deptId" element={<RequireAuth><PGCourses /></RequireAuth>} />
             <Route path="/pg/:deptId/semester/:sem" element={<RequireAuth><PGCourses /></RequireAuth>} />
+            {/* Course list for a semester and scheme, then the editor for one course */}
             <Route
               path="/syllabus/:category/:deptId/:sem/:schemeId"
+              element={<RequireAuth><CourseList /></RequireAuth>}
+            />
+            <Route
+              path="/syllabus/:category/:deptId/:sem/:schemeId/:syllabusId"
               element={<RequireAuth><SyllabusStudio /></RequireAuth>}
             />
 

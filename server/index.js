@@ -20,12 +20,14 @@ app.use(
     origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
   })
 );
-app.use(express.json());
+// A full syllabus can be a few hundred KB, so allow bigger request bodies than the 100 KB default
+app.use(express.json({ limit: '1mb' }));
 
 app.get('/', (req, res) => res.send('SDMCET Syllabus Formatter API is running.'));
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/syllabi', require('./routes/syllabi'));
 
 app.use((err, req, res, next) => {
   console.error(err);

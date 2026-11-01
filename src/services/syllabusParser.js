@@ -5,6 +5,8 @@
  *  - best-effort parser for pasted syllabus text
  */
 
+import { getFormat } from '../data/schemeFormats';
+
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
 export const toRoman = (n) => ROMAN[n] || String(n);
@@ -27,6 +29,11 @@ export function semesterLabel(sem, degree) {
   return `${toRoman(Number(sem))} Semester ${degree}`;
 }
 
+// "III Semester" - the line printed above the first course of a semester
+export function semesterShort(sem) {
+  return `${toRoman(Number(sem))} Semester`;
+}
+
 // "II Year B.E. (CSE)" for UG, "I Year M.Tech CSE" for PG; a semester pair makes one year
 export function yearLabel({ category, sem, dept }) {
   const year = toRoman(Math.ceil(Number(sem) / 2));
@@ -35,10 +42,11 @@ export function yearLabel({ category, sem, dept }) {
     : `${year} Year ${dept.degree} (${dept.code})`;
 }
 
-// Mathematically compute PO 1-12 and PSO 13-16 averages from the entered COs
-export function calculatePoPsoAverages(cosList) {
+// Mathematically compute the PO (and PSO) averages from the entered COs.
+// `count` is how many columns the scheme's mapping table has (12 + 4 for 2022, 11 for 2026).
+export function calculatePoPsoAverages(cosList, count = 16) {
   const mapping = {};
-  for (let i = 1; i <= 16; i++) mapping[i] = '-';
+  for (let i = 1; i <= count; i++) mapping[i] = '-';
   if (!cosList || cosList.length === 0) return mapping;
 
   const parse = (str) =>
@@ -49,7 +57,7 @@ export function calculatePoPsoAverages(cosList) {
           .map((s) => parseInt(s.trim(), 10))
           .filter((n) => !isNaN(n));
 
-  for (let po = 1; po <= 16; po++) {
+  for (let po = 1; po <= count; po++) {
     let sum = 0;
     let count = 0;
     cosList.forEach((co) => {
@@ -69,8 +77,10 @@ export function calculatePoPsoAverages(cosList) {
   return mapping;
 }
 
-// Blank template for a faculty member starting a fresh syllabus
-export function createBlankSyllabus({ department = '', semester = '', scheme = '' } = {}) {
+// Blank template for a faculty member starting a fresh syllabus.
+// `schemeId` ('2022', '2026', 'upcoming') picks the starting values that match that scheme's format.
+export function createBlankSyllabus({ department = '', semester = '', scheme = '', schemeId } = {}) {
+  const f = getFormat(schemeId);
   return {
     code: '',
     title: '',
@@ -79,23 +89,29 @@ export function createBlankSyllabus({ department = '', semester = '', scheme = '
     semester,
     department,
     scheme,
-    ltp: '(3-0-0)',
-    credits: 3,
-    contactHours: 39,
+    ...(schemeId ? { schemeId } : {}),
+    academicYear: f.academicYear,
+    ltp: f.heading.defaultLtp,
+    credits: f.heading.defaultCredits,
+    contactHours: f.heading.defaultHours,
     prerequisites: '',
+    cloIntro: 'This course focuses on the following learning perspectives:',
     clos: [''],
     cos: [{ id: 'CO-1', text: '', substantial: '', moderate: '', slight: '' }],
-    units: [
-      { unit: 'Unit - I', title: '', content: '', hours: 8 },
-      { unit: 'Unit - II', title: '', content: '', hours: 8 },
-      { unit: 'Unit - III', title: '', content: '', hours: 8 },
-      { unit: 'Unit - IV', title: '', content: '', hours: 8 },
-      { unit: 'Unit - V', title: '', content: '', hours: 7 },
-    ],
-    references: [''],
-    evaluationScheme:
-      'Continuous Internal Evaluation (CIE): 50 Marks (Tests: 40 + CTA: 10). Semester End Examination (SEE): 50 Marks (3 Hours duration, 5 full questions chosen from five units with internal choice).',
+    mappingMode: f.mapping.psoCount > 0 ? 'popso' : 'po',
     poPsoMapping: {},
+    units: f.units.defaultHours.map((hours, i) => ({
+      unit: f.units.label(i + 1),
+      title: '',
+      content: '',
+      hours,
+    })),
+    labTitle: f.lab.defaultTitle,
+    labExperiments: [],
+    suggestedSoftware: '',
+    softwareUsed: '',
+    references: [''],
+    evaluationScheme: '',
   };
 }
 

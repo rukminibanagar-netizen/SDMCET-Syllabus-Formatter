@@ -26,4 +26,12 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireAdmin };
+// Faculty must accept the Terms and Conditions before using the portal. Admins skip them.
+function requireTerms(req, res, next) {
+  if (req.user?.role === 'faculty' && !req.user.termsAccepted) {
+    return res.status(403).json({ message: 'Please accept the Terms and Conditions first.' });
+  }
+  next();
+}
+
+module.exports = { requireAuth, requireAdmin, requireTerms };
