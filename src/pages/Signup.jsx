@@ -1,11 +1,24 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, ArrowRight, Eye, EyeOff, GraduationCap, CheckCircle2 } from 'lucide-react';
 import { API_URL } from '../api';
+
+const DEPARTMENTS = [
+  'Computer Science & Engineering',
+  'Information Science & Engineering',
+  'Electronics & Communication Engineering',
+  'Electrical & Electronics Engineering',
+  'Mechanical Engineering',
+  'Civil Engineering',
+  'Chemical Engineering',
+  'Artificial Intelligence & Machine Learning',
+  'Basic Sciences & Humanities',
+];
 
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [department, setDepartment] = useState('Computer Science & Engineering');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,8 +30,8 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !password) {
-      setError('Please fill in all fields.');
+    if (!name || !email || !password || !department) {
+      setError('Please fill in all fields including department.');
       return;
     }
     if (password.length < 8) {
@@ -34,14 +47,14 @@ export default function Signup() {
       const res = await fetch(`${API_URL}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, department }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.message || 'Sign up failed.');
         return;
       }
-      setSuccess(data.message);
+      setSuccess(data.message || 'Registration request submitted. Pending administrator approval.');
     } catch {
       setError('Cannot reach the server. Make sure the backend is running.');
     } finally {
@@ -74,15 +87,26 @@ export default function Signup() {
 
         {success ? (
           <div className="space-y-5 text-center">
-            <div className="p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-sm text-emerald-100">
-              {success}
+            <div className="p-5 bg-emerald-500/15 border border-emerald-500/40 rounded-2xl text-left space-y-2">
+              <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <span>Account Created (Pending Approval)</span>
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed">
+                {success}
+              </p>
+              <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-[11px] text-slate-300">
+                <strong>Next Step:</strong> The administrator will review your credentials. Once approved, you will receive an email confirmation and can sign in with your password.
+              </div>
             </div>
-            <Link
-              to="/login"
-              className="inline-block text-sm font-semibold text-orange-400 hover:underline"
-            >
-              Back to login
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+              <Link
+                to="/login"
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-md transition-all inline-block"
+              >
+                Go to Login Page
+              </Link>
+            </div>
           </div>
         ) : (
           <>
@@ -101,9 +125,27 @@ export default function Signup() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Your full name"
+                    placeholder="Prof. John Doe"
                     className={inputClass}
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Academic Department</label>
+                <div className="relative">
+                  <GraduationCap className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:bg-slate-800"
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept} className="text-slate-900 bg-white">
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
