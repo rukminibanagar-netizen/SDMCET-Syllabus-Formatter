@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { UG_DEPARTMENTS, PG_DEPARTMENTS } from '../data/departments';
-import { SCHEMES, SEMESTER_COUNT } from '../data/schemes';
-import { useAuth } from '../context/AuthContext';
+import { SCHEMES } from '../data/schemes';
+import { getFormat, mappingSpec } from '../data/schemeFormats';
+import { getSyllabus, updateSyllabus } from '../services/syllabusApi';
 import {
   createBlankSyllabus,
   parseRawSyllabusText,
   calculatePoPsoAverages,
-  semesterLabel,
+  semesterShort,
   yearLabel,
 } from '../services/syllabusParser';
 import SyllabusEditor from '../components/SyllabusEditor';
@@ -17,27 +18,10 @@ import {
   Upload, Image, CheckCircle2, RotateCcw,
 } from 'lucide-react';
 
-// Drafts are kept in this browser so a refresh does not lose work.
-const loadDraft = (key) => {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-};
-const saveDraft = (key, value) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* storage full or blocked: editing still works, it just will not persist */
-  }
-};
-
 function NotFound({ message }) {
   return (
     <div className="max-w-xl mx-auto bg-slate-900/85 backdrop-blur-xl border border-white/20 rounded-3xl p-8 text-white shadow-2xl">
-      <h1 className="text-xl font-bold">Selection not found</h1>
+      <h1 className="text-xl font-bold">Could not open this syllabus</h1>
       <p className="text-sm text-slate-300 mt-1">{message}</p>
       <Link to="/home" className="inline-flex items-center gap-2 mt-6 text-sm font-semibold text-orange-400 hover:underline">
         <ArrowLeft className="w-4 h-4" /> Back to home
@@ -46,23 +30,98 @@ function NotFound({ message }) {
   );
 }
 
+// Small label next to the Print button that shows whether the syllabus is saved
+function SaveStatus({ state, onRetry }) {
+  const styles = {
+    saved: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+    saving: 'text-slate-600 bg-slate-50 border-slate-200',
+    dirty: 'text-amber-700 bg-amber-50 border-amber-200',
+    error: 'text-red-700 bg-red-50 border-red-200',
+  };
+  const labels = { saved: 'Saved', saving: 'Saving...', dirty: 'Unsaved changes', error: 'Could not save' };
+  return (
+    <span
+      role="status"
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold ${styles[state]}`}
+    >
+      {labels[state]}
+      {state === 'error' && (
+        <button type="button" onClick={onRetry} className="underline">
+          Retry
+        </button>
+      )}
+    </span>
+  );
+}
+
 // The Syllabus Studio (the editor page from the reference project)
-function Studio({ type, currentDept, sem, scheme, storageKey }) {
+function Studio({ record, type, currentDept, sem, scheme }) {
+  const canEdit = record.canEdit; // only the author or an admin can change it
+  const format = getFormat(scheme.id); // how this scheme's syllabus page is laid out
   const makeBlank = () =>
     createBlankSyllabus({
       department: currentDept.name,
-      semester: semesterLabel(sem, currentDept.degree),
+      semester: semesterShort(sem),
       scheme: scheme.label,
+      schemeId: scheme.id,
     });
 
-  // Starts blank (or with the saved draft) — 100% user provided
-  const [course, setCourse] = useState(() => loadDraft(storageKey) || makeBlank());
-  const [activeTab, setActiveTab] = useState('edit'); // 'edit', 'upload', 'preview'
+  // The saved syllabus from the database; people who cannot edit it start on the preview
+  const [course, setCourse] = useState(record.course);
+  const [activeTab, setActiveTab] = useState(canEdit ? 'edit' : 'preview'); // 'edit', 'upload', 'preview'
   const [rawText, setRawText] = useState('');
   const [feedback, setFeedback] = useState('');
   const feedbackTimer = useRef(null);
 
-  useEffect(() => saveDraft(storageKey, course), [storageKey, course]);
+  // ---- Saving to the database ----
+  const [saveState, setSaveState] = useState('saved'); // 'saved' | 'dirty' | 'saving' | 'error'
+  const courseRef = useRef(course);
+  const unsaved = useRef(false);
+  const saveCounter = useRef(0);
+  courseRef.current = course;
+
+  const saveNow = async () => {
+    const mine = ++saveCounter.current;
+    setSaveState('saving');
+    try {
+      await updateSyllabus(record.id, courseRef.current);
+      if (mine === saveCounter.current) {
+        unsaved.current = false;
+        setSaveState('saved');
+      }
+    } catch {
+      if (mine === saveCounter.current) setSaveState('error');
+    }
+  };
+
+  // Save about a second after the last change
+  useEffect(() => {
+    if (!canEdit || course === record.course) return undefined;
+    unsaved.current = true;
+    setSaveState('dirty');
+    const timer = setTimeout(saveNow, 1000);
+    return () => clearTimeout(timer);
+  }, [course]);
+
+  // Leaving this page while a change is still waiting: send it now
+  useEffect(
+    () => () => {
+      if (unsaved.current) updateSyllabus(record.id, courseRef.current).catch(() => {});
+    },
+    []
+  );
+
+  // Closing the tab with unsaved changes: ask the browser to warn
+  useEffect(() => {
+    if (saveState === 'saved') return undefined;
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [saveState]);
+
   useEffect(() => () => clearTimeout(feedbackTimer.current), []);
 
   const flash = (msg, ms = 3500) => {
@@ -71,7 +130,10 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
     feedbackTimer.current = setTimeout(() => setFeedback(''), ms);
   };
 
-  const footerLeft = `${yearLabel({ category: type, sem, dept: currentDept })} • ${scheme.label}`;
+  // e.g. "II Year B. E. (CSE): 2024-25"
+  const footerLeft = `${yearLabel({ category: type, sem, dept: currentDept }).replace('B.E.', 'B. E.')}: ${
+    course.academicYear || format.academicYear
+  }`;
 
   // Ingestion from pasted text
   const handleTextParse = () => {
@@ -80,7 +142,7 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
       return;
     }
     const parsed = parseRawSyllabusText(rawText, makeBlank());
-    parsed.poPsoMapping = calculatePoPsoAverages(parsed.cos);
+    parsed.poPsoMapping = calculatePoPsoAverages(parsed.cos, mappingSpec(format, parsed).total);
     setCourse(parsed);
     setActiveTab('edit');
     flash('Text processed and mapped into fields successfully!', 3000);
@@ -136,8 +198,8 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm no-print">
         <div className="flex items-center gap-3">
           <Link
-            to={`/${type}/${currentDept.id}/semester/${sem}`}
-            title="Back to schemes"
+            to={`/syllabus/${type}/${currentDept.id}/${sem}/${scheme.id}`}
+            title="Back to courses"
             className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -153,7 +215,7 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
             </div>
             <div className="text-xs text-slate-500">
               Semester {sem} • {scheme.label} • {course.code || 'Course Code (Pending)'} —{' '}
-              {course.title || 'Course Title (Pending)'}
+              {course.title || 'Course Title (Pending)'} • Author: {record.ownerName}
             </div>
           </div>
         </div>
@@ -161,25 +223,33 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
         {/* View Mode Controls */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
           <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-            <button type="button" onClick={() => setActiveTab('edit')} className={tabClass('edit')}>
-              <Edit3 className="w-3.5 h-3.5" /> 1. Author / Edit
-            </button>
-            <button type="button" onClick={() => setActiveTab('upload')} className={tabClass('upload')}>
-              <Upload className="w-3.5 h-3.5" /> 2. Import Text/File
-            </button>
+            {canEdit && (
+              <>
+                <button type="button" onClick={() => setActiveTab('edit')} className={tabClass('edit')}>
+                  <Edit3 className="w-3.5 h-3.5" /> 1. Author / Edit
+                </button>
+                <button type="button" onClick={() => setActiveTab('upload')} className={tabClass('upload')}>
+                  <Upload className="w-3.5 h-3.5" /> 2. Import Text/File
+                </button>
+              </>
+            )}
             <button type="button" onClick={() => setActiveTab('preview')} className={tabClass('preview')}>
               <Eye className="w-3.5 h-3.5" /> 3. Official Preview
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleReset}
-            title="Clear & Reset"
-            className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
+          {canEdit && <SaveStatus state={saveState} onRetry={saveNow} />}
+
+          {canEdit && (
+            <button
+              type="button"
+              onClick={handleReset}
+              title="Clear & Reset"
+              className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
 
           <button
             type="button"
@@ -199,9 +269,21 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
         </div>
       )}
 
+      {!canEdit && (
+        <div className="p-3.5 bg-sky-50 border border-sky-200 text-sky-900 rounded-2xl text-xs flex items-center gap-2 shadow-sm no-print">
+          <Eye className="w-4 h-4 text-sky-600 shrink-0" />
+          <span>You can view and print this syllabus. Only its author or an admin can edit it.</span>
+        </div>
+      )}
+
       {/* TAB 1: DYNAMIC AUTHORING FORM */}
       {activeTab === 'edit' && (
-        <SyllabusEditor course={course} setCourse={setCourse} onPreview={() => setActiveTab('preview')} />
+        <SyllabusEditor
+          course={course}
+          setCourse={setCourse}
+          format={format}
+          onPreview={() => setActiveTab('preview')}
+        />
       )}
 
       {/* TAB 2: IMPORT VIA UNSTRUCTURED TEXT OR FILE UPLOAD */}
@@ -288,40 +370,54 @@ function Studio({ type, currentDept, sem, scheme, storageKey }) {
               Edit tab.
             </span>
           </div>
-          <SyllabusDocument course={course} footerLeft={footerLeft} editable onCourseChange={setCourse} />
+          <SyllabusDocument
+            course={course}
+            format={format}
+            footerLeft={footerLeft}
+            editable={canEdit}
+            onCourseChange={canEdit ? setCourse : undefined}
+          />
         </div>
       )}
     </div>
   );
 }
 
-// Route: /syllabus/:category/:deptId/:sem/:schemeId  (opened after choosing a scheme)
+// Route: /syllabus/:category/:deptId/:sem/:schemeId/:syllabusId  (opened from the course list)
 export default function SyllabusStudio() {
-  const { category, deptId, sem, schemeId } = useParams();
-  const { user } = useAuth();
+  const { syllabusId } = useParams();
+  const [record, setRecord] = useState(null);
+  const [error, setError] = useState('');
 
-  const type = category === 'pg' ? 'pg' : 'ug';
-  const currentDept = (type === 'pg' ? PG_DEPARTMENTS : UG_DEPARTMENTS).find((d) => d.id === deptId);
-  const scheme = SCHEMES.find((s) => s.id === schemeId);
-  const semNum = Number(sem);
+  useEffect(() => {
+    let cancelled = false;
+    setRecord(null);
+    setError('');
+    getSyllabus(syllabusId)
+      .then((data) => { if (!cancelled) setRecord(data); })
+      .catch((err) => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, [syllabusId]);
 
-  if (!currentDept) return <NotFound message="That department or programme does not exist." />;
-  if (!scheme) return <NotFound message="That scheme does not exist." />;
-  if (!Number.isInteger(semNum) || semNum < 1 || semNum > SEMESTER_COUNT[type]) {
-    return <NotFound message={`Semester must be between 1 and ${SEMESTER_COUNT[type]}.`} />;
+  if (error) return <NotFound message={error} />;
+  if (!record) return <p className="text-sm text-slate-200 text-center py-20">Loading syllabus...</p>;
+
+  const type = record.category === 'pg' ? 'pg' : 'ug';
+  const currentDept = (type === 'pg' ? PG_DEPARTMENTS : UG_DEPARTMENTS).find((d) => d.id === record.deptId);
+  const scheme = SCHEMES.find((s) => s.id === record.schemeId);
+  if (!currentDept || !scheme) {
+    return <NotFound message="The department or scheme of this syllabus no longer exists." />;
   }
 
-  const storageKey = `syllabus-draft:${user?.id || 'anon'}:${type}:${deptId}:${semNum}:${schemeId}`;
-
-  // key remounts the studio (and its draft) whenever the selection changes
+  // key remounts the studio if a different syllabus is opened
   return (
     <Studio
-      key={storageKey}
+      key={record.id}
+      record={record}
       type={type}
       currentDept={currentDept}
-      sem={semNum}
+      sem={record.sem}
       scheme={scheme}
-      storageKey={storageKey}
     />
   );
 }

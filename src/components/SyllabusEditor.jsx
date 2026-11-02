@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, Trash2, Eye, AlertCircle } from 'lucide-react';
 import { calculatePoPsoAverages } from '../services/syllabusParser';
+import { mappingSpec } from '../data/schemeFormats';
 
 const CAT_MAP = {
   PCC: 'Professional Core Course',
@@ -14,11 +15,12 @@ const CAT_MAP = {
 };
 
 // TAB 1: dynamic authoring form (100% user-provided data)
-export default function SyllabusEditor({ course, setCourse, onPreview }) {
+export default function SyllabusEditor({ course, setCourse, onPreview, format }) {
   const update = (patch) => setCourse((c) => ({ ...c, ...patch }));
+  const spec = mappingSpec(format, course); // PO / PSO columns of this scheme's mapping table
 
   // ---- COs: PO/PSO matrix is recalculated whenever the COs change ----
-  const withCos = (cos) => update({ cos, poPsoMapping: calculatePoPsoAverages(cos) });
+  const withCos = (cos) => update({ cos, poPsoMapping: calculatePoPsoAverages(cos, spec.total) });
 
   const handleCoChange = (index, field, value) =>
     withCos(course.cos.map((co, i) => (i === index ? { ...co, [field]: value } : co)));
@@ -53,9 +55,7 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
     });
 
   const addUnit = () => {
-    const unitLabels = ['Unit - I', 'Unit - II', 'Unit - III', 'Unit - IV', 'Unit - V', 'Unit - VI'];
-    const nextIndex = course.units.length;
-    const nextLabel = unitLabels[nextIndex] || `Unit - ${nextIndex + 1}`;
+    const nextLabel = format.units.label(course.units.length + 1);
     update({ units: [...course.units, { unit: nextLabel, title: '', content: '', hours: 8 }] });
   };
 
@@ -73,6 +73,13 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
     update({ references: course.references.filter((_, i) => i !== index) });
   };
 
+  // ---- Laboratory experiments (only printed when there is something in this section) ----
+  const labList = course.labExperiments || [];
+  const handleLabChange = (index, value) =>
+    update({ labExperiments: labList.map((x, i) => (i === index ? value : x)) });
+  const addLab = () => update({ labExperiments: [...labList, ''] });
+  const removeLab = (index) => update({ labExperiments: labList.filter((_, i) => i !== index) });
+
   // Total unit hours check
   const totalUnitHours = course.units.reduce((sum, u) => sum + (parseInt(u.hours, 10) || 0), 0);
 
@@ -82,7 +89,7 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
       <div>
         <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
           <span>1. Course Metadata</span>
-          <span className="text-[11px] font-normal text-slate-400">Prescribed by SDMCET Scheme</span>
+          <span className="text-[11px] font-normal text-slate-400">Format: {format.label}</span>
         </h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -136,7 +143,7 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="(4-0-0)"
+                placeholder={format.heading.defaultLtp}
                 value={course.ltp}
                 onChange={(e) => update({ ltp: e.target.value })}
                 className="w-1/2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-center"
@@ -152,7 +159,7 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Prescribed Contact Hours *</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Prescribed {format.heading.hoursLabel} *</label>
             <input
               type="number"
               placeholder="52"
@@ -161,10 +168,39 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
               className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-bold"
             />
           </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Academic Year (footer)</label>
+            <input
+              type="text"
+              placeholder={format.academicYear}
+              value={course.academicYear ?? format.academicYear}
+              onChange={(e) => update({ academicYear: e.target.value })}
+              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-center font-bold"
+            />
+          </div>
+
+          {format.mapping.psoOptional && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">PO / PSO Mapping</label>
+              <select
+                value={course.mappingMode || 'popso'}
+                onChange={(e) => {
+                  const mode = e.target.value;
+                  const next = mappingSpec(format, { ...course, mappingMode: mode });
+                  update({ mappingMode: mode, poPsoMapping: calculatePoPsoAverages(course.cos, next.total) });
+                }}
+                className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              >
+                <option value="popso">POs 1-12 and PSOs 13-16</option>
+                <option value="po">POs 1-12 only</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="mt-4">
-          <label className="block text-xs font-bold text-slate-700 mb-1">Pre-requisites</label>
+          <label className="block text-xs font-bold text-slate-700 mb-1">{format.prerequisitesLabel}</label>
           <input
             type="text"
             placeholder="e.g. Problem Solving skills and knowledge of Programming in C language (or None)"
@@ -173,6 +209,10 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
           />
         </div>
+
+        <p className="text-[11px] text-slate-500 mt-3">
+          Tip: put two asterisks around words to make them bold in the formatted syllabus, for example **Develop**.
+        </p>
       </div>
 
       {/* Section B: Course Learning Objectives (CLOs) */}
@@ -188,6 +228,17 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
           >
             <Plus className="w-3.5 h-3.5" /> Add CLO
           </button>
+        </div>
+
+        <div className="mb-3">
+          <label className="block text-[11px] font-semibold text-slate-600 mb-1">Introduction line (optional)</label>
+          <input
+            type="text"
+            placeholder="This course focuses on the following learning perspectives:"
+            value={course.cloIntro ?? ''}
+            onChange={(e) => update({ cloIntro: e.target.value })}
+            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+          />
         </div>
 
         <div className="space-y-2">
@@ -223,8 +274,7 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
               3. Course Outcomes (COs) & NBA/OBE Mapping
             </h3>
             <p className="text-[11px] text-slate-500">
-              Enter PO (1–12) and PSO (13–16) numbers mapped to each level. The system calculates column averages
-              automatically.
+              {`Enter PO (1–${spec.poCount})${spec.withPso ? ` and PSO (${spec.poCount + 1}–${spec.total})` : ''} numbers mapped to each level. The system calculates column averages automatically.`}
             </p>
           </div>
           <button
@@ -317,7 +367,7 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
               </span>
               <span>|</span>
               <span>
-                Contact Hours: <strong className="text-slate-800">{course.contactHours} Hrs</strong>
+                {format.heading.hoursLabel}: <strong className="text-slate-800">{course.contactHours} Hrs</strong>
               </span>
               {totalUnitHours !== course.contactHours && (
                 <span className="text-amber-600 font-semibold flex items-center gap-1">
@@ -384,11 +434,79 @@ export default function SyllabusEditor({ course, setCourse, onPreview }) {
         </div>
       </div>
 
-      {/* Section E: Reference Books */}
+      {/* Section E: Laboratory experiments (optional) */}
+      <div>
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+              5. Laboratory / Term Work (optional)
+            </h3>
+            <p className="text-[11px] text-slate-500">
+              Leave this empty for a theory-only course. It is printed only when you add experiments or software.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={addLab}
+            className="px-3 py-1 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-orange-100"
+          >
+            <Plus className="w-3.5 h-3.5" /> Add Experiment
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder="Heading, e.g. **List of Laboratory experiments** (2 hours/week, 14 lab sessions)"
+            value={course.labTitle ?? ''}
+            onChange={(e) => update({ labTitle: e.target.value })}
+            className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+          />
+
+          {labList.map((item, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-400 w-6 text-center">{idx + 1}.</span>
+              <input
+                type="text"
+                placeholder={`Experiment ${idx + 1}`}
+                value={item}
+                onChange={(e) => handleLabChange(idx, e.target.value)}
+                className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => removeLab(idx)}
+                className="p-2 text-slate-400 hover:text-red-600 rounded-lg"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <input
+              type="text"
+              placeholder="Suggested softwares (e.g. Mathematica/MATLAB/Python)"
+              value={course.suggestedSoftware ?? ''}
+              onChange={(e) => update({ suggestedSoftware: e.target.value })}
+              className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+            />
+            <input
+              type="text"
+              placeholder="Software used (e.g. Python)"
+              value={course.softwareUsed ?? ''}
+              onChange={(e) => update({ softwareUsed: e.target.value })}
+              className="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section F: Reference Books */}
       <div>
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-            5. Reference Books (IEEE Format)
+            6. Reference Books (IEEE Format)
           </h3>
           <button
             type="button"

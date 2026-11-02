@@ -11,9 +11,50 @@ body {
   background-color: #0f172a;
 }
 
-/* Formal Times New Roman academic font for the syllabus document */
-.sdmcet-doc-font {
-  font-family: 'Times New Roman', Times, serif;
+/* The syllabus page: US Letter width, Arial 11 pt, like the printed SDMCET syllabus books */
+.sdmcet-doc {
+  width: 8.5in;
+  max-width: 100%;
+  padding: 0.6in 1in 0.8in;
+  font-family: Arial, Helvetica, 'Liberation Sans', sans-serif;
+  font-size: 11pt;
+  line-height: 1.25;
+}
+
+/* Header and footer capsules ("SDMCET: Syllabus" and "II Year B. E. (CSE): 2024-25") */
+.doc-header,
+.doc-footer {
+  display: flex;
+  align-items: center;
+  background: #fff;
+}
+.doc-header {
+  margin-bottom: 0.3in;
+}
+.doc-footer {
+  margin-top: 0.4in;
+}
+.doc-rule {
+  flex: 1;
+  height: 5px;
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+}
+.doc-pill {
+  min-width: 42%;
+  padding: 2px 1.5rem;
+  border: 2px solid #000;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  font-size: 10pt;
+  font-weight: 700;
+  text-align: center;
+}
+.doc-pill-left {
+  min-width: 0;
+  margin-right: 0.2in;
+  text-align: left;
 }
 
 /* Click-to-edit text inside the official preview (screen only) */
@@ -40,7 +81,8 @@ body {
 /* Print / Export PDF: only the syllabus page is printed */
 @media print {
   @page {
-    margin: 12mm;
+    size: letter;
+    margin: 0.95in 1in;
   }
   html,
   body {
@@ -64,6 +106,21 @@ body {
     padding: 0 !important;
     width: 100% !important;
     max-width: none !important;
+  }
+  /* Fixed elements are repeated on every printed page, inside the page margins */
+  .doc-header {
+    position: fixed;
+    top: -0.65in;
+    left: 0;
+    right: 0;
+    margin: 0;
+  }
+  .doc-footer {
+    position: fixed;
+    bottom: -0.65in;
+    left: 0;
+    right: 0;
+    margin: 0;
   }
   .syllabus-print-container table,
   .syllabus-print-container tr {
