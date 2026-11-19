@@ -11,11 +11,12 @@ import {
   semesterShort,
   yearLabel,
 } from '../services/syllabusParser';
+import { extractTextFromPDF, extractTextFromTxt } from '../services/pdfExtractor';
 import SyllabusEditor from '../components/SyllabusEditor';
 import SyllabusDocument from '../components/SyllabusDocument';
 import {
   Printer, ArrowLeft, Eye, Edit3,
-  Upload, Image, CheckCircle2, RotateCcw,
+  Upload, Image, CheckCircle2, RotateCcw, FileText, Loader2,
 } from 'lucide-react';
 
 function NotFound({ message }) {
@@ -30,7 +31,6 @@ function NotFound({ message }) {
   );
 }
 
-// Small label next to the Print button that shows whether the syllabus is saved
 function SaveStatus({ state, onRetry }) {
   const styles = {
     saved: 'text-emerald-700 bg-emerald-50 border-emerald-200',
@@ -54,10 +54,9 @@ function SaveStatus({ state, onRetry }) {
   );
 }
 
-// The Syllabus Studio (the editor page from the reference project)
 function Studio({ record, type, currentDept, sem, scheme }) {
-  const canEdit = record.canEdit; // only the author or an admin can change it
-  const format = getFormat(scheme.id); // how this scheme's syllabus page is laid out
+  const canEdit = record.canEdit;
+  const format = getFormat(scheme.id);
   const makeBlank = () =>
     createBlankSyllabus({
       department: currentDept.name,
@@ -66,15 +65,16 @@ function Studio({ record, type, currentDept, sem, scheme }) {
       schemeId: scheme.id,
     });
 
-  // The saved syllabus from the database; people who cannot edit it start on the preview
   const [course, setCourse] = useState(record.course);
-  const [activeTab, setActiveTab] = useState(canEdit ? 'edit' : 'preview'); // 'edit', 'upload', 'preview'
+  const [activeTab, setActiveTab] = useState(canEdit ? 'edit' : 'preview');
   const [rawText, setRawText] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [feedbackType, setFeedbackType] = useState('success'); // 'success' | 'error' | 'info'
+  const [extracting, setExtracting] = useState(false); // PDF extraction in progress
   const feedbackTimer = useRef(null);
 
-  // ---- Saving to the database ----
-  const [saveState, setSaveState] = useState('saved'); // 'saved' | 'dirty' | 'saving' | 'error'
+  // ---- Saving ----
+  const [saveState, setSaveState] = useState('saved');
   const courseRef = useRef(course);
   const unsaved = useRef(false);
   const saveCounter = useRef(0);
@@ -94,7 +94,6 @@ function Studio({ record, type, currentDept, sem, scheme }) {
     }
   };
 
-  // Save about a second after the last change
   useEffect(() => {
     if (!canEdit || course === record.course) return undefined;
     unsaved.current = true;
@@ -103,7 +102,6 @@ function Studio({ record, type, currentDept, sem, scheme }) {
     return () => clearTimeout(timer);
   }, [course]);
 
-  // Leaving this page while a change is still waiting: send it now
   useEffect(
     () => () => {
       if (unsaved.current) updateSyllabus(record.id, courseRef.current).catch(() => {});
@@ -111,31 +109,27 @@ function Studio({ record, type, currentDept, sem, scheme }) {
     []
   );
 
-  // Closing the tab with unsaved changes: ask the browser to warn
   useEffect(() => {
     if (saveState === 'saved') return undefined;
-    const warn = (e) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
+    const warn = (e) => { e.preventDefault(); e.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [saveState]);
 
   useEffect(() => () => clearTimeout(feedbackTimer.current), []);
 
-  const flash = (msg, ms = 3500) => {
+  const flash = (msg, type = 'success', ms = 4000) => {
     setFeedback(msg);
+    setFeedbackType(type);
     clearTimeout(feedbackTimer.current);
     feedbackTimer.current = setTimeout(() => setFeedback(''), ms);
   };
 
-  // e.g. "II Year B. E. (CSE): 2024-25"
   const footerLeft = `${yearLabel({ category: type, sem, dept: currentDept }).replace('B.E.', 'B. E.')}: ${
     course.academicYear || format.academicYear
   }`;
 
-  // Ingestion from pasted text
+  // ---- Parse pasted text and jump to preview ----
   const handleTextParse = () => {
     if (!rawText.trim()) {
       alert('Please paste the faculty syllabus text first.');
@@ -144,36 +138,84 @@ function Studio({ record, type, currentDept, sem, scheme }) {
     const parsed = parseRawSyllabusText(rawText, makeBlank());
     parsed.poPsoMapping = calculatePoPsoAverages(parsed.cos, mappingSpec(format, parsed).total);
     setCourse(parsed);
-    setActiveTab('edit');
-    flash('Text processed and mapped into fields successfully!', 3000);
+    setActiveTab('preview'); // ← go straight to the formatted output
+    flash('✅ Syllabus extracted and formatted! Scroll down to see the SDMCET preview.', 'success', 5000);
   };
 
-  // Ingestion from file upload.
-  // Plain-text files are read into the paste box. PDF / Word / images cannot be read yet,
-  // so we say so instead of filling the form with made-up values.
-  const handleFileUpload = (e) => {
+  // ---- File upload: PDF gets extracted, .txt goes straight to paste box ----
+  const handleFileUpload = async (e) => {
     const file = e.target.files && e.target.files[0];
-    e.target.value = '';
+    e.target.value = ''; // allow re-selecting the same file
     if (!file) return;
 
-    if (/\.(txt|md)$/i.test(file.name)) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setRawText(String(reader.result || ''));
-        flash(`"${file.name}" loaded into the text box. Click "Extract and Populate Fields".`);
-      };
-      reader.onerror = () => flash('Could not read that file.');
-      reader.readAsText(file);
+    // Plain-text / markdown files — load into the paste area
+    if (/\.(txt|md|text)$/i.test(file.name)) {
+      try {
+        const text = await extractTextFromTxt(file);
+        setRawText(text);
+        flash(`"${file.name}" loaded. Click "Extract & Format Syllabus" to process it.`, 'info');
+      } catch {
+        flash('Could not read the text file.', 'error');
+      }
       return;
     }
 
+    // PDF files — extract text with PDF.js, then run parser immediately
+    if (/\.pdf$/i.test(file.name)) {
+      setExtracting(true);
+      flash(`Extracting text from "${file.name}"… please wait.`, 'info', 60000);
+      try {
+        const text = await extractTextFromPDF(file);
+        if (!text || text.trim().length < 20) {
+          flash(
+            `"${file.name}" appears to be a scanned image PDF. Please use Option C (photo upload) or copy-paste the text manually.`,
+            'error',
+            8000
+          );
+          setExtracting(false);
+          return;
+        }
+        // Show the raw text so the user can review it, then auto-parse
+        setRawText(text);
+        const parsed = parseRawSyllabusText(text, makeBlank());
+        parsed.poPsoMapping = calculatePoPsoAverages(parsed.cos, mappingSpec(format, parsed).total);
+        setCourse(parsed);
+        setActiveTab('preview'); // ← jump straight to formatted output
+        flash(
+          `✅ PDF extracted and formatted! "${file.name}" → ${parsed.cos?.length || 0} COs, ${parsed.units?.length || 0} units found.`,
+          'success',
+          6000
+        );
+      } catch (err) {
+        flash(
+          `Could not extract text from "${file.name}". Try opening the PDF and copy-pasting the text into Option A.`,
+          'error',
+          8000
+        );
+      } finally {
+        setExtracting(false);
+      }
+      return;
+    }
+
+    // DOCX / DOC — cannot parse in the browser without a server; guide the user
+    if (/\.(docx?|odt)$/i.test(file.name)) {
+      flash(
+        `Word documents cannot be read directly in the browser. Open "${file.name}" in Word, press Ctrl+A → Ctrl+C, then paste into Option A.`,
+        'error',
+        8000
+      );
+      return;
+    }
+
+    // Any other type
     flash(
-      `Reading "${file.name}" is not available yet. Open the file, copy its text and paste it into Option A.`,
+      `"${file.name}" is not a supported format. Use PDF, TXT, or paste text directly.`,
+      'error',
       6000
     );
   };
 
-  // Reset all fields
   const handleReset = () => {
     if (window.confirm('Clear all fields and start a fresh blank syllabus?')) {
       setCourse(makeBlank());
@@ -181,7 +223,6 @@ function Studio({ record, type, currentDept, sem, scheme }) {
     }
   };
 
-  // The print layout only shows the formatted syllabus, so open the preview first
   const handlePrint = () => {
     setActiveTab('preview');
     setTimeout(() => window.print(), 150);
@@ -191,6 +232,13 @@ function Studio({ record, type, currentDept, sem, scheme }) {
     `px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
       activeTab === tab ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
     }`;
+
+  // Feedback colour
+  const feedbackColours = {
+    success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    error:   'bg-red-50 border-red-200 text-red-800',
+    info:    'bg-sky-50 border-sky-200 text-sky-900',
+  };
 
   return (
     <div className="space-y-6 pb-20">
@@ -220,7 +268,6 @@ function Studio({ record, type, currentDept, sem, scheme }) {
           </div>
         </div>
 
-        {/* View Mode Controls */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
           <div className="flex bg-slate-100 p-1.5 rounded-2xl">
             {canEdit && (
@@ -262,9 +309,10 @@ function Studio({ record, type, currentDept, sem, scheme }) {
         </div>
       </div>
 
+      {/* Feedback Banner */}
       {feedback && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs flex items-center gap-2 shadow-sm no-print">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className={`p-3.5 border rounded-2xl text-xs flex items-center gap-2 shadow-sm no-print ${feedbackColours[feedbackType] || feedbackColours.info}`}>
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
           <span>{feedback}</span>
         </div>
       )}
@@ -292,68 +340,83 @@ function Studio({ record, type, currentDept, sem, scheme }) {
           <div>
             <h3 className="text-lg font-extrabold text-slate-900">Import Raw Syllabus from Text, PDF, or Photo</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Paste unformatted notes or syllabus documents. The engine will extract all parameters and populate the
-              authoring form automatically.
+              Paste or upload your syllabus in <strong>any format</strong> — the engine handles varying
+              spacing, different labels, and multiple styles automatically.
             </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Option A: Paste Unstructured Syllabus Text
-              </label>
-              <textarea
-                rows="8"
-                placeholder={`Paste syllabus details here...\n\nExample:\nCourse Code: 22UCSC300\nCourse Title: Data Structures and Applications\nContact Hours: 52\nPrerequisites: C Programming\nCLO: Understanding stack and queue data structures.\n...`}
-                value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
-                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-mono"
+          {/* Option A: Paste Text */}
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-slate-700">
+              Option A: Paste Raw Syllabus Text (any spacing or format)
+            </label>
+            <textarea
+              rows={10}
+              placeholder={`Paste your syllabus text here — any alignment works, for example:\n\nCourse Code   :   22UCSC300\nCourse  Title :   Data Structures and Applications\nContact Hours :   52\nPre-requisites:   C Programming\n\nCourse Learning Objectives\n- Understanding stack and queue data structures\n- Applying graph algorithms in real applications\n\nCO 1 : Understand sorting algorithms     1,2    14,15    3\nCO 2 : Develop graph-based solutions     1,3    12,14    5\n\nUnit - I : Introduction to Data Structures\nArrays, linked lists, stacks...  8 Hrs\n\nUnit - II : Trees and Graphs\nBinary trees, BST, graph traversal...  8 Hrs\n\nReference Books\n1) Horowitz E., Sahni S., 'Data Structures in C', Galgotia, 2010.\n2) Cormen T.H., 'Introduction to Algorithms', MIT Press.`}
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <button
+              type="button"
+              onClick={handleTextParse}
+              className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow cursor-pointer flex items-center gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Extract &amp; Format Syllabus →
+            </button>
+            <p className="text-[11px] text-slate-400">
+              The formatter accepts any spacing — extra spaces, tabs, missing colons, different unit numbering styles (Unit I / Module 1 / Chapter IV), and CO formats (CO-1 / CO 1 / CO.1).
+            </p>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Option B: PDF Upload */}
+            <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-3">
+              {extracting ? (
+                <Loader2 className="w-8 h-8 text-orange-500 mx-auto animate-spin" />
+              ) : (
+                <Upload className="w-8 h-8 text-slate-400 mx-auto" />
+              )}
+              <div className="text-xs font-bold text-slate-700">Option B: Upload PDF</div>
+              <p className="text-[11px] text-slate-400">
+                Text-based PDFs are extracted automatically and formatted. Scanned / image PDFs are not supported.
+              </p>
+              <input
+                type="file"
+                id="pdf-doc-input"
+                accept=".pdf,.txt,.md"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={extracting}
               />
-              <button
-                type="button"
-                onClick={handleTextParse}
-                className="mt-2 px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold rounded-xl shadow cursor-pointer"
+              <label
+                htmlFor="pdf-doc-input"
+                className={`inline-block px-4 py-2 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors ${
+                  extracting
+                    ? 'bg-slate-400 cursor-not-allowed'
+                    : 'bg-slate-900 hover:bg-orange-600'
+                }`}
               >
-                Extract and Populate Fields
-              </button>
+                {extracting ? 'Extracting…' : 'Choose PDF / TXT'}
+              </label>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-3">
-                <Upload className="w-8 h-8 text-slate-400 mx-auto" />
-                <div className="text-xs font-bold text-slate-700">Option B: Upload PDF/DOCX</div>
-                <input
-                  type="file"
-                  id="pdf-doc-input"
-                  accept=".pdf,.docx,.doc,.txt"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="pdf-doc-input"
-                  className="inline-block px-4 py-2 bg-slate-900 hover:bg-orange-600 text-white text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  Choose Document
-                </label>
-              </div>
-
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-3">
-                <Image className="w-8 h-8 text-slate-400 mx-auto" />
-                <div className="text-xs font-bold text-slate-700">Option C: Upload Photo/Scan</div>
-                <input
-                  type="file"
-                  id="img-doc-input"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="img-doc-input"
-                  className="inline-block px-4 py-2 bg-slate-900 hover:bg-orange-600 text-white text-xs font-bold rounded-xl cursor-pointer"
-                >
-                  Choose Image
-                </label>
-              </div>
+            {/* Option C: Image (manual step — OCR not in browser) */}
+            <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-3">
+              <Image className="w-8 h-8 text-slate-400 mx-auto" />
+              <div className="text-xs font-bold text-slate-700">Option C: Scanned Image / Photo</div>
+              <p className="text-[11px] text-slate-400">
+                Open the image in Google Lens or Word, copy the recognised text, then paste it into Option A above.
+              </p>
+              <a
+                href="https://lens.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block px-4 py-2 bg-slate-900 hover:bg-orange-600 text-white text-xs font-bold rounded-xl cursor-pointer transition-colors"
+              >
+                Open Google Lens ↗
+              </a>
             </div>
           </div>
         </div>
@@ -383,7 +446,6 @@ function Studio({ record, type, currentDept, sem, scheme }) {
   );
 }
 
-// Route: /syllabus/:category/:deptId/:sem/:schemeId/:syllabusId  (opened from the course list)
 export default function SyllabusStudio() {
   const { syllabusId } = useParams();
   const [record, setRecord] = useState(null);
@@ -409,7 +471,6 @@ export default function SyllabusStudio() {
     return <NotFound message="The department or scheme of this syllabus no longer exists." />;
   }
 
-  // key remounts the studio if a different syllabus is opened
   return (
     <Studio
       key={record.id}
