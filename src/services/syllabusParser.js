@@ -149,7 +149,7 @@ const SECTION_HEAD = new RegExp(
     'course\\s*learning\\s*obj|' +
     'clo\\b|' +
     'course\\s*outcome|' +
-    'co\\s*[\\-\\.:]|' +
+    'co\\s*[-:.]|' +
     'pre[\\s\\-]*requi|' +
     'contents?\\b|' +
     'unit\\b|module\\b|chapter\\b|' +
@@ -164,15 +164,15 @@ const SECTION_HEAD = new RegExp(
 // ─── CO line detector — many variations ──────────────────────────────────────
 const CO_PATTERNS = [
   // CO-1: text, CO - 1: text, CO 1: text, CO1: text, CO.1 text
-  /^C\.?O\.?\s*[\\-–\\.:\s]?\s*(\d+)\s*[-–:.)]\s*(.+)/i,
+  /^C\.?O\.?\s*[-–:.\s]?\s*(\d+)\s*[-–:.)]\s*(.+)/i,
   // "Course Outcome 1: text"
-  /^Course\s*Outcome\s*[\\-–\\.:]?\s*(\d+)\s*[-–:.)]\s*(.+)/i,
+  /^Course\s*Outcome\s*[-–:.]?\s*(\d+)\s*[-–:.)]\s*(.+)/i,
 ];
 
 // ─── Unit heading detector — many variations ─────────────────────────────────
 const UNIT_PATTERNS = [
   // Unit - I: Title, Unit-I: Title, Unit I Title, Unit:I Title
-  /^(?:Unit|Module|Chapter)\s*[\\-–\\.:]?\s*([IVXivx]+|\d+)\s*[-–:.)]*\s*(.*)/i,
+  /^(?:Unit|Module|Chapter)\s*[-–:.]?\s*([IVXivx]+|\d+)\s*[-–:.)]*\s*(.*)/i,
   // UNIT 1 : Title
   /^(?:UNIT|MODULE|CHAPTER)\s+([IVXivx]+|\d+)\s*[-–:.)]*\s*(.*)/i,
 ];
@@ -236,7 +236,7 @@ function detectCategory(text) {
 
 // ─── Detect academic year ────────────────────────────────────────────────────
 function detectAcademicYear(text) {
-  const m = text.match(/(?:a\.?y\.?|academic\s*year)?\s*[\\-\\.:]?\s*(20\d{2}\s*[-–]\s*\d{2,4})/i);
+  const m = text.match(/(?:a\.?y\.?|academic\s*year)?\s*[-:.]?\s*(20\d{2}\s*[-–]\s*\d{2,4})/i);
   return m ? m[1].replace(/\s+/g, '') : null;
 }
 
@@ -388,7 +388,7 @@ export function parseRawSyllabusText(rawText, base) {
     }
   } else {
     // Fallback: bullets that appear before any CO or Unit line
-    const firstSection = cleanLines.findIndex((l) => /^(?:c\.?o\.?\s*[\\-:]|unit\b|module\b)/i.test(l));
+    const firstSection = cleanLines.findIndex((l) => /^(?:c\.?o\.?\s*(?:-|:)|unit\b|module\b)/i.test(l));
     const limit = firstSection >= 0 ? firstSection : cleanLines.length;
     for (let i = 0; i < limit && clos.length < 8; i++) {
       if (bullet.test(cleanLines[i])) {
@@ -501,7 +501,7 @@ export function parseRawSyllabusText(rawText, base) {
       const tail = (unitMatch[2] || '').trim();
 
       // The tail might start with a colon or dash (title separator)
-      const cleanTail = tail.replace(/^[\\-–\\.:]\s*/, '').trim();
+      const cleanTail = tail.replace(/^[-–:.]\s*/, '').trim();
 
       // Check if the tail itself contains "Title: Content"
       const colonInTail = cleanTail.indexOf(':');
@@ -542,7 +542,7 @@ export function parseRawSyllabusText(rawText, base) {
   if (refHead >= 0) {
     for (let i = refHead + 1; i < cleanLines.length; i++) {
       const cl = cleanLines[i];
-      if (/^(?:assessment|evaluation|unit\b|module\b|course\s*outcome|co\s*[\\-:]|course\s*learning)/i.test(cl)) break;
+      if (/^(?:assessment|evaluation|unit\b|module\b|course\s*outcome|co\s*[-:]|course\s*learning)/i.test(cl)) break;
       const stripped = cl
         .replace(/^\s*(?:\d+\s*[).:\-]|[\[({]\s*\d+\s*[\])}])\s*/, '')
         .trim();
@@ -593,7 +593,7 @@ export function parseRawSyllabusText(rawText, base) {
     const evalLines = [];
     for (let i = evalHead + 1; i < cleanLines.length; i++) {
       const cl = cleanLines[i];
-      if (/^(?:referenc|text\s*books?|unit\b|module\b|course\s*outcome|co\s*[\\-:]|)/i.test(cl)) break;
+      if (/^(?:referenc|text\s*books?|unit\b|module\b|course\s*outcome|co\s*[-:])/i.test(cl)) break;
       evalLines.push(cl);
     }
     if (evalLines.length) result.evaluationScheme = evalLines.join('\n');
