@@ -542,7 +542,7 @@ export function parseRawSyllabusText(rawText, base) {
   if (refHead >= 0) {
     for (let i = refHead + 1; i < cleanLines.length; i++) {
       const cl = cleanLines[i];
-      if (/^(?:assessment|evaluation|unit\b|module\b|course\s*outcome|co\s*[-:]|course\s*learning)/i.test(cl)) break;
+      if (/^(?:assessment|evaluation|unit\b|module\b|course\s*outcome|co\s*(?:-|:)|course\s*learning)/i.test(cl)) break;
       const stripped = cl
         .replace(/^\s*(?:\d+\s*[).:\-]|[\[({]\s*\d+\s*[\])}])\s*/, '')
         .trim();
@@ -593,7 +593,7 @@ export function parseRawSyllabusText(rawText, base) {
     const evalLines = [];
     for (let i = evalHead + 1; i < cleanLines.length; i++) {
       const cl = cleanLines[i];
-      if (/^(?:referenc|text\s*books?|unit\b|module\b|course\s*outcome|co\s*[-:])/i.test(cl)) break;
+      if (/^(?:referenc|text\s*books?|unit\b|module\b|course\s*outcome|co\s*(?:-|:))/i.test(cl)) break;
       evalLines.push(cl);
     }
     if (evalLines.length) result.evaluationScheme = evalLines.join('\n');
