@@ -1,287 +1,532 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ChevronDown, HelpCircle, Info, ListChecks } from 'lucide-react';
+import {
+  ArrowRight,
+  BookOpen,
+  Calculator,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardList,
+  Compass,
+  FileCheck,
+  FileText,
+  GraduationCap,
+  HelpCircle,
+  Info,
+  Layers,
+  Lock,
+  Printer,
+  Save,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const card =
   'bg-slate-900/85 backdrop-blur-xl border border-white/20 rounded-3xl p-6 sm:p-8 text-white shadow-2xl';
 
-const QUICK_START = [
+const QUICK_ROADMAP = [
   {
-    title: 'Choose your programme',
-    text: 'On the Home page click UG or PG, then pick your department, the semester and the syllabus scheme. Each step scrolls to the next, and the Back button takes you up one step.',
+    step: '01',
+    title: 'Programme & Scheme Alignment',
+    desc: 'Navigate to UG or PG from the portal home. Select your engineering department, target semester (1–8 for UG, 1–4 for PG), and current academic scheme (2022, 2026, or upcoming scheme).',
   },
   {
-    title: 'Enter the syllabus',
-    text: 'In the Author / Edit tab fill in the course details, objectives, course outcomes, units, reference books and the evaluation pattern.',
+    step: '02',
+    title: 'Pedagogical Authoring',
+    desc: 'Input course metadata (Code, Title, Category, L-T-P credits), Course Learning Objectives (CLOs), modular unit syllabi, contact hour distributions, and authoritative reference literature.',
   },
   {
-    title: 'Map the outcomes',
-    text: 'For each CO type the PO/PSO numbers under Substantial, Moderate and Slight. The averages are calculated for you.',
+    step: '03',
+    title: 'OBE Matrix Formulation',
+    desc: 'Assign correlation levels for each Course Outcome against Program Outcomes (PO 1–12) and PSOs (13–16) using Substantial (3), Moderate (2), or Slight (1) correlation levels.',
   },
   {
-    title: 'Check the preview',
-    text: 'Open the Official Preview tab to see the syllabus in the SDMCET layout. Fix anything that looks wrong in the editor.',
+    step: '04',
+    title: 'BoS Layout Verification',
+    desc: 'Review the generated curriculum in the Official Preview tab, verifying typographic alignment, unit contact hours, and standard evaluation patterns.',
   },
   {
-    title: 'Print or save as PDF',
-    text: 'Click Print / Export PDF. In the print window choose your printer, or choose "Save as PDF" as the destination.',
+    step: '05',
+    title: 'Archival PDF Export',
+    desc: 'Utilize the integrated Print / Export PDF facility to generate publication-grade documentation for departmental Board of Studies (BoS) submission and archival.',
   },
 ];
 
-function Item({ title, children, defaultOpen = false }) {
+function GuideAccordion({ title, Icon, children, defaultOpen = false, badge }) {
   return (
     <details
       open={defaultOpen}
-      className="group rounded-2xl bg-white/5 border border-white/10 open:bg-white/10 transition-colors"
+      className="group rounded-2xl bg-white/5 border border-white/10 open:bg-white/[0.08] transition-all duration-200 overflow-hidden"
     >
-      <summary className="flex items-center justify-between gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden px-5 py-4 text-sm font-bold">
-        {title}
-        <ChevronDown className="w-4 h-4 shrink-0 text-orange-400 transition-transform group-open:rotate-180" />
+      <summary className="flex items-center justify-between gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden px-5 py-4 text-sm font-bold select-none hover:bg-white/5 transition-colors">
+        <div className="flex items-center gap-3">
+          {Icon && (
+            <span className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+              <Icon className="w-4 h-4" />
+            </span>
+          )}
+          <span className="text-white text-sm sm:text-base font-bold">{title}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {badge && (
+            <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] font-bold uppercase tracking-wider">
+              {badge}
+            </span>
+          )}
+          <ChevronDown className="w-4 h-4 shrink-0 text-orange-400 transition-transform duration-200 group-open:rotate-180" />
+        </div>
       </summary>
-      <div className="px-5 pb-5 text-sm text-slate-200 leading-relaxed space-y-3">{children}</div>
+      <div className="px-5 pb-5 pt-2 text-sm text-slate-200 leading-relaxed space-y-3.5 border-t border-white/5">
+        {children}
+      </div>
     </details>
   );
 }
 
-function Code({ children }) {
+function CodeBlock({ children }) {
   return (
-    <pre className="overflow-x-auto rounded-xl bg-slate-950/80 border border-white/10 p-4 text-xs font-mono text-slate-200 leading-relaxed whitespace-pre">
-      {children}
-    </pre>
+    <div className="relative rounded-2xl bg-slate-950/90 border border-white/10 p-4 font-mono text-xs text-slate-200 overflow-x-auto">
+      <div className="text-[10px] font-sans font-semibold uppercase tracking-wider text-slate-400 mb-2 border-b border-white/10 pb-1">
+        Standard Ingestion Format Sample
+      </div>
+      <pre className="whitespace-pre leading-relaxed">{children}</pre>
+    </div>
   );
 }
 
-const SAMPLE_TEXT = `Course Code: 22UCSC301
+const SAMPLE_IMPORT_STRUCTURE = `Course Code: 22UCSC301
 Course Title: Data Structures and Applications
 (4-0-0) 4
 Contact Hours: 52
 Pre-requisites: Programming in C
 Course Learning Objectives (CLOs):
-- Understand the basic linear data structures
-- Apply tree and graph algorithms to problems
-CO-1: Explain the concept of stacks and queues
-CO-2: Implement trees and graphs for applications
-Unit - I: Introduction: Pointers, dynamic memory allocation. 10 Hrs.
-Unit - II: Stacks and Queues: Stack operations, circular queue. 11 Hrs.
+- Understand foundational linear data structures and memory models
+- Apply non-linear hierarchical tree and graph algorithms to engineering problems
+CO-1: Formulate and analyze abstract data types including stacks and queues
+CO-2: Synthesize and implement self-balancing search trees for optimal retrieval
+Unit - I: Introduction to Data Structures: Pointers, dynamic allocations. 10 Hrs.
+Unit - II: Linear Abstract Types: Stacks, queues, double-ended queues. 11 Hrs.
 Reference Books:
-1) Horowitz, Fundamentals of Data Structures
-2) Tenenbaum, Data Structures using C`;
+1) Horowitz, Sahni, Fundamentals of Data Structures, Universities Press, 2nd Edition, 2018.
+2) Tenenbaum, Data Structures Using C, Pearson Education, 2019.`;
 
 export default function Help() {
   const { user } = useAuth();
+  const [filter, setFilter] = useState('all');
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-10">
-      {/* Intro */}
+    <div className="max-w-5xl mx-auto space-y-6 pb-12 select-none">
+      {/* Hero Header */}
       <section className={card}>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <HelpCircle className="w-7 h-7 text-white" />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-xl p-1.5 shrink-0 overflow-hidden">
+            <img src="/sdmcet-logo.png" alt="SDMCET Logo" className="w-full h-full object-contain" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-400">Support</p>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Help</h1>
-          </div>
-        </div>
-        <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
-          How to prepare a syllabus with the SDMCET Syllabus Formatter, from choosing your department to printing the
-          final document.
-        </p>
-      </section>
-
-      {/* Quick start */}
-      <section className={`${card} space-y-5`}>
-        <h2 className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight">
-          <ListChecks className="w-5 h-5 text-orange-400" /> Quick start
-        </h2>
-        <ol className="space-y-3">
-          {QUICK_START.map((s, i) => (
-            <li key={s.title} className="flex gap-4 rounded-2xl bg-white/5 border border-white/10 p-4">
-              <span className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-sm font-extrabold">
-                {i + 1}
-              </span>
-              <div>
-                <h3 className="text-sm font-bold">{s.title}</h3>
-                <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{s.text}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-        <div className="flex flex-wrap gap-3">
-          <Link
-            to="/ug"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-xs font-bold transition-colors"
-          >
-            Start with UG <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
-            to="/pg"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-xs font-bold transition-colors"
-          >
-            Start with PG <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Detailed help */}
-      <section className={`${card} space-y-3`}>
-        <h2 className="text-lg font-extrabold tracking-tight mb-2">Step-by-step help</h2>
-
-        <Item title="Signing up and logging in" defaultOpen>
-          <p>
-            Create an account with your name, institutional email and a password of at least 8 characters. A new
-            account cannot log in until the administrator approves it, so you will see "awaiting admin approval"
-            until then.
-          </p>
-          <p>
-            On the login page choose the role you were registered with (Faculty or Administrator). The first time you
-            sign in, read and accept the Terms and Conditions to continue.
-          </p>
-        </Item>
-
-        <Item title="Choosing the programme, semester and scheme">
-          <p>
-            From the Home page click <b>UG</b> or <b>PG</b>. Select your department (or PG programme), then the
-            semester (1 to 8 for UG, 1 to 4 for PG), then the scheme: 2022, 2026 or Upcoming. The "Upcoming" scheme
-            is still being prepared, so its format may change.
-          </p>
-          <p>
-            Each choice scrolls to the next step. Use <b>Back to departments</b> or <b>Back to semesters</b> to go up
-            a step, or the browser's back button.
-          </p>
-        </Item>
-
-        <Item title="Filling in the editor">
-          <ul className="list-disc pl-5 space-y-1.5">
-            <li><b>Course metadata:</b> course code, title, category, L-T-P with credits, contact hours and pre-requisites.</li>
-            <li><b>Course Learning Objectives:</b> one objective per box. Use Add CLO for more.</li>
-            <li><b>Course Outcomes:</b> one box per CO with its PO/PSO mapping (explained below).</li>
-            <li><b>Contents:</b> for each unit enter the title, the topics and the hours.</li>
-            <li><b>Reference books:</b> author, title, publisher, edition and year, in a consistent format.</li>
-            <li><b>Assessment and evaluation pattern:</b> pre-filled with the standard CIE/SEE text; edit it if your course differs.</li>
-          </ul>
-          <p>
-            The semester, department and scheme come from what you chose earlier and need not be typed. Below the
-            units a line tells you whether the total unit hours match the contact hours. Green means they match, amber
-            means they do not.
-          </p>
-        </Item>
-
-        <Item title="PO/PSO mapping: how to enter it">
-          <p>
-            Under each CO, list the PO numbers (1 to 12) and PSO numbers (13 to 16) in the box for its level, separated
-            by commas: <b>Substantial (3)</b>, <b>Moderate (2)</b> or <b>Slight (1)</b>. Leave a box empty where there
-            is no mapping. The preview shows a hyphen (-) there.
-          </p>
-          <p>
-            The table row "Mapping Level" is the average of the levels given to each PO/PSO across all COs. For
-            example:
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="bg-white/10 text-left">
-                  <th className="border border-white/15 p-2"></th>
-                  <th className="border border-white/15 p-2">Substantial (3)</th>
-                  <th className="border border-white/15 p-2">Moderate (2)</th>
-                  <th className="border border-white/15 p-2">Slight (1)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-white/15 p-2 font-bold">CO-1</td>
-                  <td className="border border-white/15 p-2 font-mono">1, 2</td>
-                  <td className="border border-white/15 p-2 font-mono">3</td>
-                  <td className="border border-white/15 p-2 font-mono">-</td>
-                </tr>
-                <tr>
-                  <td className="border border-white/15 p-2 font-bold">CO-2</td>
-                  <td className="border border-white/15 p-2 font-mono">1</td>
-                  <td className="border border-white/15 p-2 font-mono">-</td>
-                  <td className="border border-white/15 p-2 font-mono">3, 5</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p>
-            PO1 is mapped at 3 and 3, so its average is 3.0. PO3 is mapped at 2 and 1, so its average is 1.5. PO5 is
-            mapped once at 1, so it is 1.0.
-          </p>
-        </Item>
-
-        <Item title="Importing existing syllabus text">
-          <p>
-            Open the <b>Import Text</b> tab, paste the text (or load a .txt file) and click <b>Map text into
-            fields</b>. The portal recognises headings like the ones below and fills the matching fields. Always check
-            the result in the editor, and enter the PO/PSO levels yourself, because they are not imported.
-          </p>
-          <Code>{SAMPLE_TEXT}</Code>
-          <p>
-            Importing replaces what is currently in the editor. PDF and Word files cannot be read yet, so open them,
-            copy the text and paste it into the box.
-          </p>
-        </Item>
-
-        <Item title="Preview, print and save as PDF">
-          <p>
-            The <b>Official Preview</b> tab shows the syllabus exactly as it will print. Click{' '}
-            <b>Print / Export PDF</b>: the portal switches to the preview and opens the print window, and only the
-            syllabus page is printed. To make a PDF, choose "Save as PDF" as the destination in that window.
-          </p>
-        </Item>
-
-        <Item title="Your drafts and the reset button">
-          <p>
-            Everything you type is saved automatically in this browser, separately for each department, semester and
-            scheme. Coming back to the same selection later on the same computer and browser brings your draft back.
-          </p>
-          <p>
-            Drafts are not yet stored on the server, so they do not follow you to another computer, and clearing your
-            browser data deletes them. The circular-arrow button in the toolbar clears the current syllabus and starts
-            a blank one, after asking you to confirm.
-          </p>
-        </Item>
-
-        {user?.role === 'admin' && (
-          <Item title="For administrators: approving accounts">
-            <p>
-              Open the Admin page to see faculty accounts waiting for approval. Approve to let a person log in, or
-              reject to refuse the request. Only approved accounts can sign in.
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              Faculty & Administrator Documentation
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              Academic Formatter Knowledge Base
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
+              Comprehensive guidelines for course formulation, OBE correlation, and institutional syllabus publication.
             </p>
-          </Item>
-        )}
+          </div>
+        </div>
 
-        <Item title="Troubleshooting">
-          <ul className="list-disc pl-5 space-y-2">
-            <li>
-              <b>"Your account is awaiting admin approval":</b> the administrator has not approved the account yet.
-              Contact them.
-            </li>
-            <li>
-              <b>"Invalid email or password":</b> check both, and check that the selected role matches your account.
-            </li>
-            <li>
-              <b>The unit hours line is amber:</b> the unit hours do not add up to the contact hours. Adjust one of
-              them.
-            </li>
-            <li>
-              <b>Import filled nothing in:</b> the text probably lacks recognisable headings. Add lines such as
-              "Course Code:", "CO-1:" and "Unit - I:" and try again, or type the content in the editor.
-            </li>
-            <li>
-              <b>My draft is missing:</b> drafts belong to one browser and one selection. Check you are on the same
-              computer, browser, department, semester and scheme.
-            </li>
-          </ul>
-        </Item>
+        {/* Quick Categorical Filter Buttons */}
+        <div className="mt-6 pt-5 border-t border-white/10 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              filter === 'all'
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                : 'bg-white/10 hover:bg-white/15 text-slate-200'
+            }`}
+          >
+            All Documentation
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('faculty')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              filter === 'faculty'
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                : 'bg-white/10 hover:bg-white/15 text-slate-200'
+            }`}
+          >
+            Faculty Authoring Guides
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('obe')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              filter === 'obe'
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                : 'bg-white/10 hover:bg-white/15 text-slate-200'
+            }`}
+          >
+            OBE & Matrix Computation
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter('admin')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              filter === 'admin'
+                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/30'
+                : 'bg-white/10 hover:bg-white/15 text-slate-200'
+            }`}
+          >
+            Administrator Governance
+          </button>
+        </div>
       </section>
 
-      <p className="flex items-center justify-center gap-2 text-xs text-slate-300">
-        <Info className="w-4 h-4" />
-        Still stuck? See the <Link to="/about" className="text-orange-400 hover:underline">About page</Link> for
-        contact details.
-      </p>
+      {/* Curriculum Authoring Roadmap */}
+      {(filter === 'all' || filter === 'faculty') && (
+        <section className={`${card} space-y-5`}>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="flex items-center gap-3 text-lg sm:text-xl font-extrabold tracking-tight">
+              <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/25 shrink-0">
+                <Compass className="w-5 h-5 text-white" />
+              </span>
+              <span>Curriculum Formulation Roadmap</span>
+            </h2>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/ug"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold transition-colors shadow-md"
+              >
+                <span>Launch UG Studio</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                to="/pg"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-xs font-bold transition-colors"
+              >
+                <span>Launch PG Studio</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-2">
+            {QUICK_ROADMAP.map((item) => (
+              <div
+                key={item.step}
+                className="rounded-2xl bg-white/5 border border-white/10 p-4.5 flex flex-col justify-between hover:bg-white/[0.08] transition-all"
+              >
+                <div>
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/30 text-orange-400 font-black text-xs flex items-center justify-center mb-3">
+                    {item.step}
+                  </div>
+                  <h3 className="text-xs sm:text-sm font-bold text-white mb-1.5">{item.title}</h3>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Comprehensive Operational Guidelines */}
+      <section className={`${card} space-y-4`}>
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-3 text-lg sm:text-xl font-extrabold tracking-tight">
+            <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/25 shrink-0">
+              <BookOpen className="w-5 h-5 text-white" />
+            </span>
+            <span>Comprehensive Operational Guides</span>
+          </h2>
+        </div>
+
+        <div className="space-y-3 pt-2">
+          {/* Guide 1: Registration & Access */}
+          {(filter === 'all' || filter === 'faculty' || filter === 'admin') && (
+            <GuideAccordion
+              title="Faculty Account Registration & Credential Verification"
+              Icon={UserCheck}
+              badge="Access Protocol"
+              defaultOpen
+            >
+              <p>
+                Access to the syllabus authoring portal is strictly governed by institutional credentials. Faculty members must register using their official institutional email address (<code className="text-orange-300 font-mono text-xs">faculty_name@sdmcet.ac.in</code>) with a secure password containing at least 8 characters.
+              </p>
+              <div className="rounded-xl bg-orange-500/10 border border-orange-500/30 p-3.5 text-xs text-orange-200">
+                <strong>Administrative Verification:</strong> Upon submission, newly created faculty profiles enter a pending authorization queue. An institutional administrator validates academic identity before access rights are granted.
+              </div>
+              <p>
+                Upon initial authentication, faculty members must review and accept the official <strong>Institutional Terms and Conditions</strong> before entering the curriculum design studio.
+              </p>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 2: Programme & Scheme Selection */}
+          {(filter === 'all' || filter === 'faculty') && (
+            <GuideAccordion
+              title="Departmental Hierarchy & Scheme Navigation"
+              Icon={Layers}
+              badge="Curriculum Structure"
+            >
+              <p>
+                Curriculum schemas are indexed hierarchically across Under Graduate (UG) and Post Graduate (PG) branches:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-200">
+                <li><strong>Under Graduate Engineering (8 Departments):</strong> Computer Science, Information Science, Electronics & Communication, Electrical & Electronics, Mechanical, Civil, Chemical, and Artificial Intelligence & Machine Learning.</li>
+                <li><strong>Post Graduate Programmes (6 Specializations):</strong> Advanced Master's engineering specializations and autonomous curricula.</li>
+                <li><strong>Autonomous Schemes:</strong> 2022 Scheme (active autonomous syllabus), 2026 Scheme (revised NEP-compliant autonomous curriculum), and upcoming Board of Studies frameworks.</li>
+              </ul>
+              <p className="text-xs text-slate-300">
+                The portal preserves your selection context automatically as you transition between semester levels and modular course views.
+              </p>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 3: Course Formulation & Hours Validator */}
+          {(filter === 'all' || filter === 'faculty') && (
+            <GuideAccordion
+              title="Course Formulation & Contact Hour Synchronization"
+              Icon={FileCheck}
+              badge="Academic Standards"
+            >
+              <p>
+                The curriculum authoring studio provides structured fields enforcing institutional Board of Studies conventions:
+              </p>
+              <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
+                  <strong className="block text-white mb-1">Course Metadata</strong>
+                  Course Code, Official Title, Academic Category (Professional Core Course - PCC, Professional Elective - PEC, Open Elective - OEC, Basic Sciences - BSC, Engineering Sciences - ESC), and Prerequisites.
+                </div>
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
+                  <strong className="block text-white mb-1">L-T-P & Credit Formulation</strong>
+                  Lecture (L), Tutorial (T), and Practical (P) distribution alongside assigned institutional credits and mandated contact semester hours.
+                </div>
+              </div>
+              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3.5 text-xs text-emerald-200">
+                <strong>Contact Hour Integrity Indicator:</strong> The portal actively computes the cumulative contact hours across all syllabus units. When modular unit hours match the assigned total contact hours, a green confirmation indicator displays. An amber alert indicates a mathematical discrepancy requiring adjustment.
+              </div>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 4: Pedagogical Objectives & Bloom's Taxonomy */}
+          {(filter === 'all' || filter === 'faculty' || filter === 'obe') && (
+            <GuideAccordion
+              title="Course Learning Objectives (CLOs) & Bloom's Revised Taxonomy"
+              Icon={GraduationCap}
+              badge="Pedagogical Design"
+            >
+              <p>
+                Pedagogical objectives define the fundamental cognitive goals of the course:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-200">
+                <li><strong>Course Learning Objectives (CLOs):</strong> Broad educational intentions summarizing what instructional concepts will be delivered across the semester.</li>
+                <li><strong>Course Outcomes (COs):</strong> Measurable, demonstrable competencies students acquire upon completion. Outcomes must be articulated utilizing active verbs conforming to Bloom’s Revised Cognitive Levels: <em>Remember (L1), Understand (L2), Apply (L3), Analyze (L4), Evaluate (L5), Create (L6)</em>.</li>
+              </ul>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 5: OBE Matrix Formulation */}
+          {(filter === 'all' || filter === 'obe') && (
+            <GuideAccordion
+              title="OBE PO/PSO Correlation Matrix & Calculation Methodology"
+              Icon={Calculator}
+              badge="NBA / NAAC Compliance"
+              defaultOpen
+            >
+              <p>
+                In alignment with National Board of Accreditation (NBA) guidelines, Course Outcomes (COs) correlate with twelve Graduate Attributes / Program Outcomes (PO 1–12) and Departmental Program Specific Outcomes (PSO 13–16).
+              </p>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-4 space-y-2 text-xs">
+                <p className="font-semibold text-white">Correlation Level Standards:</p>
+                <div className="grid sm:grid-cols-3 gap-2">
+                  <div className="p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/25">
+                    <strong className="text-orange-400">Level 3 (Substantial)</strong>
+                    <p className="text-slate-300 mt-0.5">High direct relevance, measured through major assessments.</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">
+                    <strong className="text-amber-400">Level 2 (Moderate)</strong>
+                    <p className="text-slate-300 mt-0.5">Medium conceptual relevance supported through assignments.</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-white/5 border border-white/10">
+                    <strong className="text-blue-400">Level 1 (Slight)</strong>
+                    <p className="text-slate-300 mt-0.5">Introductory or contextual alignment.</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="font-semibold text-xs text-white pt-1">Sample BoS Correlation Matrix & Arithmetic Index Derivation:</p>
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="w-full text-xs text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/10 text-slate-200">
+                      <th className="p-2.5 border-b border-white/10 font-bold">Outcome</th>
+                      <th className="p-2.5 border-b border-white/10 font-bold text-orange-400">Substantial (Level 3)</th>
+                      <th className="p-2.5 border-b border-white/10 font-bold text-amber-400">Moderate (Level 2)</th>
+                      <th className="p-2.5 border-b border-white/10 font-bold text-blue-400">Slight (Level 1)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10 text-slate-300">
+                    <tr>
+                      <td className="p-2.5 font-bold text-white">CO-1</td>
+                      <td className="p-2.5 font-mono">PO1, PO2</td>
+                      <td className="p-2.5 font-mono">PO3</td>
+                      <td className="p-2.5 font-mono">—</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold text-white">CO-2</td>
+                      <td className="p-2.5 font-mono">PO1</td>
+                      <td className="p-2.5 font-mono">—</td>
+                      <td className="p-2.5 font-mono">PO3, PSO1</td>
+                    </tr>
+                    <tr className="bg-white/5 font-semibold text-white">
+                      <td className="p-2.5">Mapping Index</td>
+                      <td className="p-2.5 font-mono">PO1: 3.0</td>
+                      <td className="p-2.5 font-mono">PO3: 1.5</td>
+                      <td className="p-2.5 font-mono">PSO1: 1.0</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                The portal calculates arithmetic averages dynamically across all assigned levels, eliminating manual tabulations and ensuring mathematical accuracy for NBA accreditation exhibits.
+              </p>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 6: Ingestion Engine */}
+          {(filter === 'all' || filter === 'faculty') && (
+            <GuideAccordion
+              title="Structured Text Ingestion Engine"
+              Icon={FileText}
+              badge="Productivity Tool"
+            >
+              <p>
+                To accelerate syllabus digitisation from historical records, the <strong>Import Text</strong> module parses raw text blocks into the appropriate structured fields automatically.
+              </p>
+              <CodeBlock>{SAMPLE_IMPORT_STRUCTURE}</CodeBlock>
+              <p className="text-xs text-slate-300">
+                Paste structured curriculum content into the parsing terminal and select <em>Map text into fields</em>. Always perform an authoritative review in the editor tab prior to final preview generation.
+              </p>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 7: Preview & BoS Print Layout */}
+          {(filter === 'all' || filter === 'faculty') && (
+            <GuideAccordion
+              title="BoS Layout Verification, High-Definition Printing & PDF Generation"
+              Icon={Printer}
+              badge="Publication Output"
+            >
+              <p>
+                The <strong>Official Preview</strong> tab renders the curriculum precisely in the mandated SDMCET institutional layout:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-200">
+                <li>Institutional header banner incorporating the college emblem and department typography.</li>
+                <li>Standardised CIE (Continuous Internal Evaluation) and SEE (Semester End Examination) evaluation criteria tables.</li>
+                <li>High-resolution vector rendering optimized for A4 physical printing or digital archival.</li>
+              </ul>
+              <div className="rounded-xl bg-white/5 border border-white/10 p-3.5 text-xs text-slate-200">
+                <strong>Exporting Archival PDF:</strong> Select <em>Print / Export PDF</em>. In the system print dialog, designate your printer destination as <strong>"Save as PDF"</strong> with Margins set to "Default" and Background Graphics enabled for optimal visual fidelity.
+              </div>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 8: Autosave & Storage Architecture */}
+          {(filter === 'all' || filter === 'faculty') && (
+            <GuideAccordion
+              title="Continuous Local Autosave & State Resilience"
+              Icon={Save}
+              badge="Data Integrity"
+            >
+              <p>
+                The authoring studio continuously preserves active drafts within your local browser storage engine. Each curriculum draft is uniquely partitioned by department, semester level, and academic scheme.
+              </p>
+              <p className="text-xs text-slate-300">
+                Unexpected tab closures, browser refreshes, or navigation switches will not result in lost work. To initiate a blank curriculum template, utilize the circular reset action in the studio toolbar.
+              </p>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 9: Administrator Governance */}
+          {(filter === 'all' || filter === 'admin') && (
+            <GuideAccordion
+              title="Administrator Governance & Account Authorization Workflow"
+              Icon={ShieldCheck}
+              badge="Administrative Oversight"
+              defaultOpen={user?.role === 'admin'}
+            >
+              <p>
+                Administrative accounts maintain institutional stewardship over curriculum formulation:
+              </p>
+              <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-200">
+                <li><strong>Registration Review:</strong> Inspect pending faculty registration requests through the administrative dashboard, confirming departmental affiliation prior to authorization.</li>
+                <li><strong>Access Revocation:</strong> Temporarily or permanently suspend credentials upon departmental reassignment or academic leave.</li>
+                <li><strong>Curriculum Audit:</strong> Ensure syllabus submissions adhere to Autonomous Scheme conventions prior to Board of Studies tabling.</li>
+              </ul>
+            </GuideAccordion>
+          )}
+
+          {/* Guide 10: Troubleshooting */}
+          {(filter === 'all' || filter === 'faculty' || filter === 'admin') && (
+            <GuideAccordion
+              title="Operational Diagnostics & Troubleshooting"
+              Icon={HelpCircle}
+              badge="Resolution Center"
+            >
+              <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
+                  <strong className="text-white block mb-1">Account Awaiting Approval</strong>
+                  <p className="text-slate-300">New accounts require administrative verification. Contact your departmental coordinator or the portal administrator for authorization.</p>
+                </div>
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
+                  <strong className="text-white block mb-1">Amber Contact Hour Alert</strong>
+                  <p className="text-slate-300">The sum of modular unit hours does not equate to the declared total contact hours. Verify unit allocations against course credits.</p>
+                </div>
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
+                  <strong className="text-white block mb-1">Import Incomplete</strong>
+                  <p className="text-slate-300">Ensure raw syllabus text contains recognized delimiters such as <em>Course Code:</em>, <em>CO-1:</em>, and <em>Unit - I:</em>.</p>
+                </div>
+                <div className="rounded-xl bg-white/5 border border-white/10 p-3.5">
+                  <strong className="text-white block mb-1">Draft State Recovery</strong>
+                  <p className="text-slate-300">Drafts are saved locally in the active browser. Ensure you access the portal using the same browser profile and workstation.</p>
+                </div>
+              </div>
+            </GuideAccordion>
+          )}
+        </div>
+      </section>
+
+      {/* Institutional Support Contact Banner */}
+      <section className={`${card} space-y-4`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+              <Info className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Need Additional Institutional Guidance?</h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Consult the Board of Studies Secretariat or review institutional curriculum policies on the About page.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/about"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.01]"
+            >
+              <span>View Institutional About</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
