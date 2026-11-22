@@ -22,8 +22,8 @@ export default function Navbar() {
           
           {/* Logo */}
           <Link to="/home" className="flex items-center gap-3 no-underline group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-white font-bold shadow-md group-hover:scale-105 transition-transform">
-              <BookOpen className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-md p-1 group-hover:scale-105 transition-transform overflow-hidden">
+              <img src="/sdmcet-logo.png" alt="SDMCET Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="font-extrabold text-white text-base sm:text-lg leading-tight tracking-tight">
